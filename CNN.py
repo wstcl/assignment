@@ -50,6 +50,7 @@ def TrainModel(input_shape):
 trainModel = TrainModel(X_train.shape[1:])
 trainModel.compile('adam', 'binary_crossentropy', metrics=['accuracy'])
 trainModel.fit(X_train, y_train, epochs=40, batch_size=50)
+b = trainModel.predict_classes(X_test, verbose=1)
 preds = trainModel.evaluate(X_test, y_test, batch_size=32, verbose=1, sample_weight=None)
 print()
 print ("Loss = " + str(preds[0]))
