@@ -12,24 +12,24 @@ from keras.applications.imagenet_utils import preprocess_input
 from IPython.display import SVG
 from keras.utils.vis_utils import model_to_dot
 from keras.utils import plot_model
-
-
+from keras import optimizers
+from keras.models import Sequential
 import keras.backend as K
 K.set_image_data_format('channels_last')
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import imshow
-
+from sklearn import linear_model
 from sklearn.model_selection import train_test_split
 
-data = pd.read_csv('E:\\MaxC_0_1e_5_lnr-20180303T013254Z-001\\MaxC_0_1e_5_lnr\\spec_C2H6_all_9_pxl_1000_samples_1000_SNR_300_dB.csv')
+data = pd.read_csv('E:\\MaxC_0_1e_5_lnr-20180303T013254Z-001\\MaxC_0_1e_5_lnr\\spec_C2H6_all_9_pxl_1000_samples_1000_SNR_1_dB.csv')
 
 y_vars = ['C2H6','CH4','CO','H2O','HBr','HCl','HF','N2O','NO']
 y = data[y_vars]
 data_vars = data.columns.values.tolist()
 X_vars=[i for i in data_vars if i not in y_vars]
 X = data[X_vars]
+
 X = np.expand_dims(X, axis=2)
-#y = np.expand_dims(y, axis=2)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=7)
 
 def TrainModel(input_shape):
@@ -47,7 +47,6 @@ def TrainModel(input_shape):
     model = Model(inputs=X_input, outputs=X, name='TrainModel')
     return model
 
-
 trainModel = TrainModel(X_train.shape[1:])
 trainModel.compile('adam', 'binary_crossentropy', metrics=['accuracy'])
 trainModel.fit(X_train, y_train, epochs=40, batch_size=50)
@@ -55,3 +54,13 @@ preds = trainModel.evaluate(X_test, y_test, batch_size=32, verbose=1, sample_wei
 print()
 print ("Loss = " + str(preds[0]))
 print ("Test Accuracy = " + str(preds[1]))
+a = X_train.shape[1:]
+a = a[0]
+X_train = np.reshape(X_train,(-1,a))
+X_test = np.reshape(X_test,(-1,a))
+model = linear_model.LinearRegression()
+model.fit(X_train, y_train)
+predict = model.predict(X_test)
+
+
+
