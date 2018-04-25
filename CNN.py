@@ -32,29 +32,9 @@ X_vars=[i for i in data_vars if i not in y_vars]
 X = data[X_vars]
 
 X = np.expand_dims(X, axis=2)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=7)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=40)
 
-def generate_t(X, Y):
-    m = X.shape[0];
-    t = np.zeros(shape=m)
-    Y[Y>0] = 1
-    Y = np.array(Y)
-    for i in range(m):
-        f1 = np.zeros(9)
-        x = X[i]
-        y = Y[i]   #one_hot y_train
-        x = np.multiply(x, y)
-        for j in range(9):
-            if x[j]>0:
-                candidate = x[j]
-                x1 = x.copy()
-                x1[x1>= candidate] = 1
-                x1[x1 < candidate] = 0
-                f1[j] = f1_score(y_true=y, y_pred=x1)
-        index = np.argmax(f1)
-        t[i] = x[index]
-    t = np.transpose([t])
-    return t
+
 
 def TrainModel(input_shape):
     X_input = Input(input_shape)
@@ -78,10 +58,10 @@ def TrainModel(input_shape):
 
 trainModel = TrainModel(X_train.shape[1:])
 trainModel.compile('adam', 'categorical_crossentropy', metrics=['accuracy'])
-trainModel.fit(X_train, y_train, epochs=2, batch_size=50)
+trainModel.fit(X_train, y_train, epochs=80, batch_size=100)
 probability = trainModel.predict(X_test, verbose=1)
-probability_train = trainModel.predict(X_train, verbose=1)
-t_train = generate_t(probability_train, y_train)
+#probability_train = trainModel.predict(X_train, verbose=1)
+#t_train = generate_t(probability_train, y_train)
 preds = trainModel.evaluate(X_test, y_test, batch_size=32, verbose=1, sample_weight=None)
 print()
 print ("Loss = " + str(preds[0]))
@@ -97,7 +77,10 @@ Quantification_model.fit(X_train, y_train)
 Quanti_predict = Quantification_model.predict(X_test)
 
 #label-prediction
-
+'''Threshold_model = linear_model.LinearRegression()
+Threshold_model.fit(probability_train, t_train)
+Threshold_predict = Threshold_model.predict(probability)
+Threshold = np.multiply(np.ones(probability.shape),Threshold_predict)'''
 Threshold = 0.12*np.ones(probability.shape)
 L_predict = np.greater(probability,Threshold)
 prediction = np.multiply(L_predict, Quanti_predict)
@@ -105,9 +88,31 @@ prediction = np.multiply(L_predict, Quanti_predict)
 prediction_score = mean_squared_error(y_test, prediction)
 print(prediction_score)
 
-'''
+'''def generate_t(X, Y):
+    m = X.shape[0];
+    t = np.zeros(shape=m)
+    Y[Y>0] = 1
+    Y = np.array(Y)
+    for i in range(m):
+        f1 = np.zeros(9)
+        x = X[i]
+        y = Y[i]   #one_hot y_train
+        x = np.multiply(x, y)
+        for j in range(9):
+            if x[j]>0:
+                candidate = x[j]
+                x1 = x.copy()
+                x1[x1>= candidate] = 1
+                x1[x1 < candidate] = 0
+                f1[j] = f1_score(y_true=y, y_pred=x1)
+        index = np.argmax(f1)
+        t[i] = x[index]
+    t = np.transpose([t])
+    return t'''
 
-'''
+
+
+
 
 
 
