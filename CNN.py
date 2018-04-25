@@ -20,8 +20,7 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import imshow
 from sklearn import linear_model
 from sklearn.model_selection import train_test_split
-from keras.optimizers import SGD
-from sklearn.metrics import precision_score,f1_score
+from sklearn.metrics import precision_score,f1_score,recall_score
 from sklearn.metrics import mean_squared_error
 data = pd.read_csv('E:\\MaxC_0_1e_5_lnr-20180303T013254Z-001\\MaxC_0_1e_5_lnr\\spec_C2H6_all_9_pxl_1000_samples_1000_SNR_500_dB.csv')
 
@@ -33,7 +32,6 @@ X = data[X_vars]
 
 X = np.expand_dims(X, axis=2)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=40)
-
 
 
 def TrainModel(input_shape):
@@ -56,47 +54,16 @@ def TrainModel(input_shape):
     model = Model(inputs=X_input, outputs=X, name='TrainModel')
     return model
 
-trainModel = TrainModel(X_train.shape[1:])
-trainModel.compile('adam', 'categorical_crossentropy', metrics=['accuracy'])
-trainModel.fit(X_train, y_train, epochs=80, batch_size=100)
-probability = trainModel.predict(X_test, verbose=1)
-#probability_train = trainModel.predict(X_train, verbose=1)
-#t_train = generate_t(probability_train, y_train)
-preds = trainModel.evaluate(X_test, y_test, batch_size=32, verbose=1, sample_weight=None)
-print()
-print ("Loss = " + str(preds[0]))
-print ("Test Accuracy = " + str(preds[1]))
-
-#Quantification
-a = X_train.shape[1:]
-a = a[0]
-X_train = np.reshape(X_train,(-1,a))
-X_test = np.reshape(X_test,(-1,a))
-Quantification_model = linear_model.LinearRegression()
-Quantification_model.fit(X_train, y_train)
-Quanti_predict = Quantification_model.predict(X_test)
-
-#label-prediction
-'''Threshold_model = linear_model.LinearRegression()
-Threshold_model.fit(probability_train, t_train)
-Threshold_predict = Threshold_model.predict(probability)
-Threshold = np.multiply(np.ones(probability.shape),Threshold_predict)'''
-Threshold = 0.12*np.ones(probability.shape)
-L_predict = np.greater(probability,Threshold)
-prediction = np.multiply(L_predict, Quanti_predict)
-
-prediction_score = mean_squared_error(y_test, prediction)
-print(prediction_score)
-
-'''def generate_t(X, Y):
+def generate_t(X, Y):
     m = X.shape[0];
     t = np.zeros(shape=m)
-    Y[Y>0] = 1
-    Y = np.array(Y)
+    Yt = Y.copy()
+    Yt[Y>0] = 1
+    Yt = np.array(Yt)
     for i in range(m):
         f1 = np.zeros(9)
         x = X[i]
-        y = Y[i]   #one_hot y_train
+        y = Yt[i]   #one_hot y_train
         x = np.multiply(x, y)
         for j in range(9):
             if x[j]>0:
@@ -108,8 +75,62 @@ print(prediction_score)
         index = np.argmax(f1)
         t[i] = x[index]
     t = np.transpose([t])
-    return t'''
+    return t
 
+def evaluate(y_test, y_pre):
+    y_t = y_test.copy()
+    y_p = y_pre.copy()
+    y_t[y_t > 0] = 1
+    y_p[y_p > 0] = 1
+    precision_micro = precision_score(y_true=y_t, y_pred=y_p, average='micro')
+    precision_macro = precision_score(y_true=y_t, y_pred=y_p, average='macro')
+    recall_micro = precision_score(y_true=y_t, y_pred=y_p, average='micro')
+    recall_macro = precision_score(y_true=y_t, y_pred=y_p, average='macro')
+    f1_micro = f1_score(y_true=y_t, y_pred=y_p, average='micro')
+    f1_macro = f1_score(y_true=y_t, y_pred=y_p, average='macro')
+    return precision_micro,precision_macro,recall_micro,recall_macro,f1_micro,f1_macro
+
+trainModel = TrainModel(X_train.shape[1:])
+trainModel.compile('adam', 'categorical_crossentropy', metrics=['accuracy'])
+trainModel.fit(X_train, y_train, epochs=60, batch_size=100)
+probability = trainModel.predict(X_test, verbose=1)
+probability_train = trainModel.predict(X_train, verbose=1)
+t_train = generate_t(probability_train, y_train)
+preds = trainModel.evaluate(X_test, y_test, batch_size=32, verbose=1, sample_weight=None)
+print()
+print ("Loss = " + str(preds[0]))
+print ("Test Accuracy = " + str(preds[1]))
+
+
+#Quantification
+a = X_train.shape[1:]
+a = a[0]
+X_train = np.reshape(X_train,(-1,a))
+X_test = np.reshape(X_test,(-1,a))
+Quantification_model = linear_model.LinearRegression()
+Quantification_model.fit(X_train, y_train)
+Quanti_predict = Quantification_model.predict(X_test)
+
+
+#label-prediction
+Threshold_model = linear_model.LinearRegression()
+Threshold_model.fit(probability_train, t_train)
+Threshold_predict = Threshold_model.predict(probability)
+Threshold = np.multiply(np.ones(probability.shape),Threshold_predict)
+#Threshold = 0.12*np.ones(probability.shape)
+L_predict = np.greater(probability,Threshold)
+prediction = np.multiply(L_predict, Quanti_predict)
+prediction_score = mean_squared_error(y_test, prediction)
+print('Mean square error for quantification:',prediction_score)
+
+
+pi,pa,ri,ra,fi,fa = evaluate(y_test,L_predict)
+print('precision_micro:',pi)
+print('precision_macro:',pa)
+print('recall_micro:',ri)
+print('recall_macro:',ra)
+print('f1_score_micro:',fi)
+print('f1_score_macro:',fa)
 
 
 
